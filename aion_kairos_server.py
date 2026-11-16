@@ -113,8 +113,9 @@ def check_time(signal: KairosSignal) -> None:
     # November 16-Dec 1 inclusive: block new intents before 09:35 ET;
     # restore 09:30 ET on December 2. Exit intents retain safety grace.
     today_override = ny.date() == date(2026, 11, 10)
-    entry_end = time(15, 30) if today_override else time(14, 45)
-    exit_end = time(15, 50) if today_override else time(15, 0)
+    early_close = ny.date() == date(2026, 11, 27)
+    entry_end = time(15, 30) if today_override else (time(12, 45) if early_close else time(14, 45))
+    exit_end = time(15, 50) if today_override else (time(12, 55) if early_close else time(15, 0))
     texas_window = date(2026, 11, 16) <= ny.date() <= date(2026, 12, 1)
     entry_start = time(9, 35) if texas_window else time(9, 30)
     if signal.signal.startswith("BUY") and not (entry_start <= clock < entry_end):
