@@ -266,9 +266,19 @@ def armed():
     return get_cfg('armed','false') == 'true' and not KILL.exists()
 
 
-# One-day PAPER session exception. It expires automatically after 2026-11-10 ET.
-# Default 14:45 emergency exit remains unchanged on all other dates.
+# November 10 exception is historical; never silently extend it.
+# Temporary Texas session: 2026-11-16 through 2026-12-01 (inclusive),
+# 08:35-13:45 America/Chicago == 09:35-14:45 America/New_York.
+# No new PAPER entries before 09:35 ET on these dates; restore 09:31 ET
+# automatically on 2026-12-02. The 14:45 ET failsafe cutoff stays unchanged.
 SESSION_OVERRIDE_DAY = date(2026, 11, 10)
+TEXAS_WINDOW_START = date(2026, 11, 16)
+TEXAS_WINDOW_END = date(2026, 12, 1)
+
+
+def session_entry_start(current=None):
+    n = (current or now_utc()).astimezone(NY)
+    return time(9, 35) if TEXAS_WINDOW_START <= n.date() <= TEXAS_WINDOW_END else time(9, 31)
 
 
 def session_cutoffs(current=None):
@@ -284,7 +294,8 @@ def market_window(signal='ENTRY', current=None):
         return False
     entry_end, exit_end = session_cutoffs(n)
     if signal == 'ENTRY':
-        return time(9, 31) <= n.time() < entry_end
+        return session_entry_start(n) <= n.time() < entry_end
+    # Exit attempts remain permitted during the existing safety grace period.
     return time(9, 31) <= n.time() < exit_end
 
 
