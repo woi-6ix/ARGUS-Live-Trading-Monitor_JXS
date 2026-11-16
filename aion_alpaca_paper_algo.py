@@ -284,7 +284,10 @@ def session_entry_start(current=None):
 def session_cutoffs(current=None):
     n = (current or now_utc()).astimezone(NY)
     if n.date() == SESSION_OVERRIDE_DAY:
-        return time(15, 30), time(15, 50)  # entry/forced-exit, exit-order grace
+        return time(15, 30), time(15, 50)  # historical exception
+    if n.date() == date(2026, 11, 27):
+        # Thanksgiving Friday: exchange closes 13:00 ET. Exit earlier.
+        return time(12, 45), time(12, 55)
     return time(14, 45), time(15, 2)
 
 
@@ -756,7 +759,8 @@ def risk_exit(api):
     """PAPER 0DTE emergency exit attempt at the date-specific entry cutoff.
 
     KAIROS signals ordinarily control exits. The default failsafe is 14:45 ET;
-    on 2026-11-10 only, it is 15:30 ET. Fills are not guaranteed.
+    on 2026-11-10 only, it is 15:30 ET; on the Nov 27 early close,
+    it is 12:45 ET. Fills are not guaranteed.
     """
     now_et = now_utc().astimezone(NY)
     if not armed() or not market_window('EXIT', now_et):
