@@ -266,28 +266,15 @@ def armed():
     return get_cfg('armed','false') == 'true' and not KILL.exists()
 
 
-# November 10 exception is historical; never silently extend it.
-# Temporary Texas session: 2026-11-16 through 2026-12-01 (inclusive),
-# 08:35-13:45 America/Chicago == 09:35-14:45 America/New_York.
-# No new PAPER entries before 09:35 ET on these dates; restore 09:31 ET
-# automatically on 2026-12-02. The 14:45 ET failsafe cutoff stays unchanged.
+# One-day PAPER session exception. It expires automatically after 2026-11-10 ET.
+# Default 14:45 emergency exit remains unchanged on all other dates.
 SESSION_OVERRIDE_DAY = date(2026, 11, 10)
-TEXAS_WINDOW_START = date(2026, 11, 16)
-TEXAS_WINDOW_END = date(2026, 12, 1)
-
-
-def session_entry_start(current=None):
-    n = (current or now_utc()).astimezone(NY)
-    return time(9, 35) if TEXAS_WINDOW_START <= n.date() <= TEXAS_WINDOW_END else time(9, 31)
 
 
 def session_cutoffs(current=None):
     n = (current or now_utc()).astimezone(NY)
     if n.date() == SESSION_OVERRIDE_DAY:
-        return time(15, 30), time(15, 50)  # historical exception
-    if n.date() == date(2026, 11, 27):
-        # Thanksgiving Friday: exchange closes 13:00 ET. Exit earlier.
-        return time(12, 45), time(12, 55)
+        return time(15, 30), time(15, 50)  # entry/forced-exit, exit-order grace
     return time(14, 45), time(15, 2)
 
 
@@ -297,8 +284,7 @@ def market_window(signal='ENTRY', current=None):
         return False
     entry_end, exit_end = session_cutoffs(n)
     if signal == 'ENTRY':
-        return session_entry_start(n) <= n.time() < entry_end
-    # Exit attempts remain permitted during the existing safety grace period.
+        return time(9, 31) <= n.time() < entry_end
     return time(9, 31) <= n.time() < exit_end
 
 
@@ -759,8 +745,7 @@ def risk_exit(api):
     """PAPER 0DTE emergency exit attempt at the date-specific entry cutoff.
 
     KAIROS signals ordinarily control exits. The default failsafe is 14:45 ET;
-    on 2026-11-10 only, it is 15:30 ET; on the Nov 27 early close,
-    it is 12:45 ET. Fills are not guaranteed.
+    on 2026-11-10 only, it is 15:30 ET. Fills are not guaranteed.
     """
     now_et = now_utc().astimezone(NY)
     if not armed() or not market_window('EXIT', now_et):
